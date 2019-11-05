@@ -1,5 +1,5 @@
 ﻿
-namespace EFCore.WebAPI.Models
+namespace EFCore.Dominio
 {
     public class IdentidadeSecreta
     {
