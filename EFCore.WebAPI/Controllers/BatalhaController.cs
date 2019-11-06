@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using EFCore.Dominio;
 using EFCore.Repositorio;
 using Microsoft.AspNetCore.Mvc;
@@ -11,20 +13,20 @@ namespace EFCore.WebAPI.Controllers
     [ApiController]
     public class BatalhaController : ControllerBase
     {
-        public readonly HeroiContext _context;
+        private readonly IEFCoreRepository _repository;
 
-        public BatalhaController(HeroiContext context)
+        public BatalhaController(IEFCoreRepository repository)
         {
-            _context = context;
+            _repository = repository;
         }
 
         // GET: api/Batalha
         [HttpGet]
-        public ActionResult GetList()
+        public async Task<IActionResult> Get(bool incluirHeroi = true)
         {
             try
             {
-                var listBatalha = _context.Batalhas.ToList();
+                var listBatalha = await _repository.getAllBatalhas(incluirHeroi);
                 return Ok(listBatalha);
             }
             catch (Exception ex)
@@ -35,84 +37,77 @@ namespace EFCore.WebAPI.Controllers
 
         // GET: api/Batalha/5
         [HttpGet("{id}", Name = "GetBatalha")]
-        public ActionResult Get(int id)
+        public async Task<IActionResult> Get(int id)
         {
             try
             {
-                var listBatalha = _context.Batalhas.Find(id);
-                return Ok(listBatalha);
+                var heroi = await _repository.getBatalhaById(id, true);
+                return Ok(heroi);
             }
             catch (Exception ex)
             {
-                return BadRequest($"Erro: { ex } ");
+                return BadRequest($"Erro: {ex}");
             }
         }
 
         // POST: api/Batalha
         [HttpPost]
-        public ActionResult Post(Batalha model)
+        public async Task<IActionResult> Post(Batalha model)
         {
             try
             {
-                _context.Batalhas.Add(model);
-                _context.SaveChanges();
-                return Ok("Dados salvo com sucesso!");
+                _repository.Add(model);
+                if(await _repository.SavesChangeAsync())
+                    return Ok("Dados salvo com sucesso!");
             }
             catch (Exception ex)
             {
-                return BadRequest($"Erro: {ex}");
+                return BadRequest($"Erro: {ex} ");
             }
+
+            return Ok("Erro ao salvar os dados.");
         }
 
         // PUT: api/Batalha/5
         [HttpPut("{id}")]
-        public ActionResult Put(int id, Batalha model)
+        public async Task<IActionResult> Put(int id, Batalha model)
         {
             try
             {
-                if (_context.Batalhas.AsNoTracking().FirstOrDefault(h => h.Id == id) != null)
+                var batalha = await _repository.getBatalhaById(id);
+                if (batalha != null)
                 {
-                    _context.Update(model);
-                    _context.SaveChanges();
-                    return Ok("Dados atualizado com sucesso.");
-                }
-                else
-                {
-                    return Ok("Batalha não localizado...");
+                    _repository.Update(model);
+                    if (await _repository.SavesChangeAsync())
+                        return Ok("Dados atualizado com sucesso!");
                 }
             }
             catch (Exception ex)
             {
                 return BadRequest($"Erro: {ex}");
             }
+            return Ok("Erro ao atualizar os dados.");
         }
 
         // DELETE: api/ApiWithActions/5
         [HttpDelete("{id}")]
-        public ActionResult Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
             try
             {
-                var batalha = _context.Batalhas
-                .Where(x => x.Id == id)
-                .Single();
-
-                if (batalha != null)
+                var model = await _repository.getBatalhaById(id);
+                if (model != null)
                 {
-                    _context.Batalhas.Remove(batalha);
-                    _context.SaveChanges();
-                    return Ok("Dados deletado com sucesso.");
+                    _repository.Delete(model);
+                    if (await _repository.SavesChangeAsync())
+                        return Ok("Dados deletado com sucesso!");
                 }
-                else
-                {
-                    return Ok("Batalha não localizado...");
-                }
-
             }
             catch (Exception ex)
             {
-                return BadRequest($"Erro ao atualizar os dados: {ex}");
+                return BadRequest($"Erro: {ex}");
             }
+            return Ok("Erro ao deletar os dados.");
         }
     }
 }
